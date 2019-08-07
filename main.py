@@ -107,6 +107,8 @@ INTRO_SELLER = '<i>Игра началась! Вы - ПРОДАВЕЦ подпи
 
 ROLES_INTRO_DICT = {ROLE_BUYER: INTRO_BUYER, ROLE_SELLER: INTRO_SELLER}
 
+ALL_CONTENT_TYPES = ['document', 'text', 'photo', 'audio', 'video',  'location', 'contact', 'sticker']
+
 
 def get_reply_markup_for_id(user_id):
     user_object = mongo_users.find_one({'user_id': user_id})
@@ -157,7 +159,7 @@ def send_text_to_user(user_id, text, reply_markup=None):
     time.sleep(0.3)
 
 
-@bot.message_handler(func=lambda message: True, content_types=['document', 'text', 'photo'])
+@bot.message_handler(func=lambda message: True, content_types=ALL_CONTENT_TYPES)
 def process_message(msg):
     if msg.message_id in PROCESSED_MESSAGES:
         return
