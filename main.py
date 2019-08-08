@@ -86,6 +86,19 @@ SUGGEST_START_GAME = 'Начать игру'
 SUGGEST_NOT_START_GAME = 'Не начинать игру'
 SUGGEST_END_GAME = 'Завершить игру'
 
+INITIAL_SELLER_SUGGESTS = [
+    "Привет! Хотите купить подписку?",
+    "Я заметила, что вы ещё не подписаны на Яндекс Музыку, хотите подписаться?",
+    "Здравствуйте! У вас, наверное, уже есть подписка Яндекс.Плюс?"
+]
+
+INITIAL_BUYER_SUGGESTS = [
+    "Здравствуйте! Сколько стоит подписка на Яндекс.Музыку?",
+    "Привет! Где мне бесплатно можно музыку послушать?",
+    "Добрый день! Мне нужна помощь в выборе музыкального сервиса"
+]
+
+
 ROLE_ACTIVE = 'active'
 ROLE_INACTIVE = 'inactive'
 ROLE_BUYER = 'buyer'
@@ -113,6 +126,7 @@ WELCOME_TEXT = '<i>Привет! Я бот для игры в продажу п�
 
 INTRO_BUYER = '<i>Игра началась! Вы - потенциальный ПОКУПАТЕЛЬ подписки на Яндекс.Музыку. ' \
               '\nВаша задача - выяснить, нужна ли вам подписка, и, если нужна, купить подешевле.' \
+              '\n\n Я буду иногда давать вам кнопки-подсказки, но лучше пишите от себя.' \
               '\nУспешного торга!</i>'
 
 
@@ -123,15 +137,19 @@ INTRO_SELLER = '<i>Игра началась! Вы - ПРОДАВЕЦ подпи
                '\n - Нативная на год - 1690 ₽  - https://music.yandex.ru/pay' \
                '\n - Семейная на месяц - 299 ₽ - https://music.yandex.ru/family-plus' \
                '\n - Нативная КиноПоиск + Амедиатека (на месяц) - 649 ₽ - https://www.kinopoisk.ru/mykp ' \
+               '\n\n Я буду иногда давать вам кнопки-подсказки, но лучше пишите от себя.' \
                '\n Успешного торга!</i>'
 
 ROLES_INTRO_DICT = {ROLE_BUYER: INTRO_BUYER, ROLE_SELLER: INTRO_SELLER}
+
+ROLES_INITIAL_SUGGESTS_DICT = {ROLE_BUYER: INITIAL_BUYER_SUGGESTS, ROLE_SELLER: INITIAL_SELLER_SUGGESTS}
 
 ALL_CONTENT_TYPES = ['document', 'text', 'photo', 'audio', 'video',  'location', 'contact', 'sticker']
 
 YES = ['Да', 'Удалось']
 NO = ['Нет', 'Не удалось']
 YES_NO_SUGGESTS = [YES[0], NO[0]]
+
 
 def get_reply_markup_for_id(user_id):
     user_object = mongo_users.find_one({'user_id': user_id})
@@ -150,6 +168,12 @@ def get_suggests_for_user_object(user_object):
     else:
         game_suggest = SUGGEST_END_GAME
     return [subscription_suggest, game_suggest]
+
+
+def shuffled(some_list):
+    items = some_list[:]
+    random.shuffle(items)
+    return items
 
 
 def render_markup_for_user_object(user_object):
@@ -311,9 +335,13 @@ def process_message(msg):
             add_game_log(log_event='game_start', log_text=None, log_sender_role=new_role)
             send_text_to_user(
                 user_id, ROLES_INTRO_DICT[new_role],
-                reply_markup=render_markup([subscription_suggest, SUGGEST_END_GAME])
+                reply_markup=render_markup(shuffled(ROLES_INITIAL_SUGGESTS_DICT[new_role]))
             )
-            send_text_to_user(counterparty, ROLES_INTRO_DICT[new_counterparty_role])
+            send_text_to_user(
+                counterparty,
+                ROLES_INTRO_DICT[new_counterparty_role],
+                reply_markup=render_markup(shuffled(ROLES_INITIAL_SUGGESTS_DICT[new_counterparty_role]))
+            )
             print("class: start new game successfully")
             return
         else:
