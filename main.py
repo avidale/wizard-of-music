@@ -28,7 +28,7 @@ else:
     mongo_client = mongomock.MongoClient()
     mongo_db = mongo_client.db
 
-# user_id, username, allow_notifications, current_role, counterparty, game_id
+# user_id, username, allow_notifications, current_role, current_state, counterparty, game_id
 mongo_users = mongo_db.get_collection('users')
 # event, sender, receiver, text, sender_role, game_id, timestamp, message_id
 mongo_game_logs = mongo_db.get_collection('game_logs')
@@ -61,7 +61,7 @@ def get_message():
 def get_game_logs(m):
     if MONGO_URL is None:
         result = '\n'.join([str(row) for row in mongo_game_logs.find({})])
-        bot.send_message(m.chat.id, result)
+        bot.send_message(m.chat.id, result or 'logs are empty so far')
     else:
         bot.send_message(m.shat.id, "На проде логи нельзя посмотреть из бота.")
 
@@ -100,18 +100,20 @@ INITIAL_BUYER_SUGGESTS = [
 ]
 
 
-ROLE_ACTIVE = 'active'
-ROLE_INACTIVE = 'inactive'
+STATE_ACTIVE = 'active'
+STATE_INACTIVE = 'inactive'
+STATE_IN_GAME = 'in_game'
+STATE_FEEDBACK_DEAL = 'feedback_deal'
+STATE_FEEDBACK_TERMS = 'feedback_terms'
+STATE_FEEDBACK_WHY_NOT = 'feedback_why_not'
+STATE_FEEDBACK_LIKE = 'feedback_like'
+
+STATES_GAME = {STATE_IN_GAME}
+STATES_FEEDBACK = {STATE_FEEDBACK_DEAL, STATE_FEEDBACK_LIKE, STATE_FEEDBACK_TERMS, STATE_FEEDBACK_WHY_NOT}
+STATES_OUTSIDE = {STATE_ACTIVE, STATE_INACTIVE}
+
 ROLE_BUYER = 'buyer'
 ROLE_SELLER = 'seller'
-ROLE_FEEDBACK_DEAL = 'feedback_deal'
-ROLE_FEEDBACK_TERMS = 'feedback_terms'
-ROLE_FEEDBACK_WHY_NOT = 'feedback_why_not'
-ROLE_FEEDBACK_LIKE = 'feedback_like'
-
-GAME_ROLES = {ROLE_BUYER, ROLE_SELLER}
-FEEDBACK_ROLES = {ROLE_FEEDBACK_DEAL, ROLE_FEEDBACK_LIKE, ROLE_FEEDBACK_TERMS, ROLE_FEEDBACK_WHY_NOT}
-OUTSIDE_ROLES = {ROLE_ACTIVE, ROLE_INACTIVE}
 
 ROLES_DICT = {ROLE_BUYER: 'потенциальный покупатель', ROLE_SELLER: 'продавец'}
 
@@ -162,9 +164,9 @@ def get_suggests_for_user_object(user_object):
         subscription_suggest = SUGGEST_UNSUBSCRIBE
     else:
         subscription_suggest = SUGGEST_SUBSCRIBE
-    if user_object.get('current_role') == ROLE_INACTIVE:
+    if user_object.get('current_state') == STATE_INACTIVE:
         game_suggest = SUGGEST_START_GAME
-    elif user_object.get('current_role') == ROLE_ACTIVE:
+    elif user_object.get('current_state') == STATE_ACTIVE:
         game_suggest = SUGGEST_NOT_START_GAME
     else:
         game_suggest = SUGGEST_END_GAME
@@ -185,8 +187,8 @@ def render_markup_for_user_object(user_object):
 
 def find_subscribed_users():
     user_ids = []
-    user_objects = list(mongo_users.find({'allow_notifications': True, 'current_role': ROLE_ACTIVE})) \
-        + list(mongo_users.find({'allow_notifications': True, 'current_role': ROLE_INACTIVE}))
+    user_objects = list(mongo_users.find({'allow_notifications': True, 'current_state': STATE_ACTIVE})) \
+        + list(mongo_users.find({'allow_notifications': True, 'current_state': STATE_INACTIVE}))
     for uo in user_objects:
         user_ids.append(uo['user_id'])
     random.shuffle(user_ids)
@@ -242,7 +244,8 @@ def process_message(msg):
                 'user_id': user_id,
                 'username': username,
                 'allow_notifications': False,
-                'current_role': ROLE_INACTIVE,
+                'current_state': STATE_INACTIVE,
+                'current_role': None,
                 'counterparty': None,
                 'game_id': None
             }
@@ -254,6 +257,7 @@ def process_message(msg):
         return
     print(user_object)
 
+    current_state = user_object.get('current_state')
     current_role = user_object.get('current_role')
     current_role_name = ROLES_DICT.get(current_role, 'undefined')
     counterparty = user_object.get('counterparty')
@@ -262,6 +266,7 @@ def process_message(msg):
     def add_game_log(log_event, log_text, log_sender_role=None):
         if log_sender_role is None:
             log_sender_role = current_role
+        print('add game log: event "{}", text "{}", role "{}"'.format(log_event, log_text, log_sender_role))
         mongo_game_logs.insert_one({
             'event': log_event,
             'sender': user_id,
@@ -282,14 +287,12 @@ def process_message(msg):
             '<i>Я пока не поддерживаю стикеры, фото и т.п.\nПожалуйста, пользуйтесь текстом и смайликами \U0001F642</i>',  # noqa
             reply_markup=default_markup)
         print("class: no text detected")
-        return
     elif text == SUGGEST_SUBSCRIBE:
         if user_object.get('allow_notifications'):
             send_text_to_user(
                 user_id, '<i>Вы уже и так подписаны на обновления о новых игроках!</i>', reply_markup=default_markup,
             )
             print("class: subscribe, but already subscribed")
-            return
         else:
             mongo_users.update_one(user_filter, {'$set': {'allow_notifications': True}})
             send_text_to_user(
@@ -297,14 +300,12 @@ def process_message(msg):
                 reply_markup=render_markup([SUGGEST_UNSUBSCRIBE, game_suggest])
             )
             print("class: subscribe successfully")
-            return
     elif text == SUGGEST_UNSUBSCRIBE:
         if not user_object.get('allow_notifications'):
             send_text_to_user(
                 user_id, '<i>Вы уже и так отписаны от обновлений о новых игроках!</i>', reply_markup=default_markup
             )
             print("class: unsubscribe, but already unsubscribed")
-            return
         else:
             mongo_users.update_one(user_filter, {'$set': {'allow_notifications': False}})
             send_text_to_user(
@@ -312,9 +313,8 @@ def process_message(msg):
                 reply_markup=render_markup([SUGGEST_SUBSCRIBE, game_suggest])
             )
             print("class: unsubscribe successfully")
-            return
-    elif text == SUGGEST_START_GAME and current_role in OUTSIDE_ROLES:
-        vacants = list(mongo_users.find({'current_role': ROLE_ACTIVE}))
+    elif text == SUGGEST_START_GAME and current_state in STATES_OUTSIDE:
+        vacants = list(mongo_users.find({'current_state': STATE_ACTIVE}))
         random.shuffle(vacants)
         if len(vacants) > 0:
             counterparty = vacants[0]['user_id']
@@ -327,11 +327,11 @@ def process_message(msg):
                 new_counterparty_role = ROLE_SELLER
             mongo_users.update_one(
                 user_filter,
-                {'$set': {'current_role': new_role, 'counterparty': counterparty, 'game_id': game_id}}
+                {'$set': {'current_state': STATE_IN_GAME, 'current_role': new_role, 'counterparty': counterparty, 'game_id': game_id}}
             )
             mongo_users.update_one(
                 {'user_id': counterparty},
-                {'$set': {'current_role': new_counterparty_role, 'counterparty': user_id, 'game_id': game_id}}
+                {'$set': {'current_state': STATE_IN_GAME, 'current_role': new_counterparty_role, 'counterparty': user_id, 'game_id': game_id}}
             )
             add_game_log(log_event='game_start', log_text=None, log_sender_role=new_role)
             send_text_to_user(
@@ -344,10 +344,9 @@ def process_message(msg):
                 reply_markup=render_markup(shuffled(ROLES_INITIAL_SUGGESTS_DICT[new_counterparty_role]))
             )
             print("class: start new game successfully")
-            return
         else:
-            if current_role != ROLE_ACTIVE:
-                mongo_users.update_one(user_filter, {'$set': {'current_role': ROLE_ACTIVE}})
+            if current_state != STATE_ACTIVE:
+                mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_ACTIVE}})
             for other_user_id in find_subscribed_users():
                 if other_user_id != user_id:
                     send_text_to_user(other_user_id, '<i>Кто-то готов к новой игре! Вы можете присоединиться!</i>')
@@ -360,15 +359,13 @@ def process_message(msg):
                 reply_markup=render_markup([subscription_suggest, SUGGEST_NOT_START_GAME]),
             )
             print("class: tried to start new game, but has no counterparty")
-            return
-    elif text == SUGGEST_START_GAME and current_role in GAME_ROLES:
+    elif text == SUGGEST_START_GAME and current_state == STATE_IN_GAME:
         send_text_to_user(
             user_id, '<i>Вы и так уже в игре! Ваша роль - {}</i>'.format(current_role_name),
             reply_markup=default_markup
         )
         print("class: tried to start new game, but already in a game")
-        return
-    elif text == SUGGEST_END_GAME and current_role in OUTSIDE_ROLES:
+    elif text == SUGGEST_END_GAME and current_state in STATES_OUTSIDE:
         send_text_to_user(
             user_id,
             '<i>Вы уже и так не играете. Нажмите "{}", чтобы не получать приглашения в следующие игры</i>'.format(
@@ -377,10 +374,9 @@ def process_message(msg):
             reply_markup=default_markup
         )
         print("class: tried to end a game, but already not in a game")
-        return
-    elif text == SUGGEST_END_GAME and current_role in GAME_ROLES:
+    elif text == SUGGEST_END_GAME and current_state == STATE_IN_GAME:
         add_game_log(log_event='game_end', log_text=None)
-        the_update = {'$set': {'current_role': ROLE_FEEDBACK_DEAL}}
+        the_update = {'$set': {'current_state': STATE_FEEDBACK_DEAL}}
         mongo_users.update_one(user_filter, the_update)
         mongo_users.update_one({'user_id': counterparty}, the_update)
         send_text_to_user(
@@ -394,10 +390,10 @@ def process_message(msg):
             reply_markup=render_markup(YES_NO_SUGGESTS)
         )
         print("class: game ended successfully; ask whether it was successful")
-    elif current_role == ROLE_FEEDBACK_DEAL:
+    elif current_state == STATE_FEEDBACK_DEAL:
         if text_is_like(text, YES):
             add_game_log(log_event='feedback_deal', log_text='YES')
-            mongo_users.update_one(user_filter, {'$set': {'current_role': ROLE_FEEDBACK_TERMS}})
+            mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_FEEDBACK_TERMS}})
             send_text_to_user(
                 user_id,
                 '<i>Отлично! Пожалуйста, кратко опишите условия сделки '
@@ -408,7 +404,7 @@ def process_message(msg):
             print('class: collected a positive deal feedback')
         elif text_is_like(text, NO):
             add_game_log(log_event='feedback_deal', log_text='NO')
-            mongo_users.update_one(user_filter, {'$set': {'current_role': ROLE_FEEDBACK_WHY_NOT}})
+            mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_FEEDBACK_WHY_NOT}})
             send_text_to_user(
                 user_id,
                 '<i>Как жаль! Пожалуйста, расскажите вкратце (в одном сообщении), почему сделка не состоялась?</i>',
@@ -423,12 +419,12 @@ def process_message(msg):
                 reply_markup=render_markup(YES_NO_SUGGESTS)
             )
             print('class: could not collect the deal feedback; reask')
-    elif current_role in {ROLE_FEEDBACK_TERMS, ROLE_FEEDBACK_WHY_NOT}:
-        if current_role == ROLE_FEEDBACK_TERMS:
+    elif current_state in {STATE_FEEDBACK_TERMS, STATE_FEEDBACK_WHY_NOT}:
+        if current_state == STATE_FEEDBACK_TERMS:
             add_game_log(log_event='feedback_terms', log_text=text)
-        elif current_role == ROLE_FEEDBACK_WHY_NOT:
+        elif current_state == STATE_FEEDBACK_WHY_NOT:
             add_game_log(log_event='feedback_why_not', log_text=text)
-        mongo_users.update_one(user_filter, {'$set': {'current_role': ROLE_FEEDBACK_LIKE}})
+        mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_FEEDBACK_LIKE}})
         send_text_to_user(
             user_id,
             '<i>Понятно. Последний вопрос: насколько вам понравился этот разговор, '
@@ -437,10 +433,10 @@ def process_message(msg):
             reply_markup=render_markup(['1', '2', '3', '4', '5'], max_columns=5)
         )
         print('class: terms/whynot feedback succesfully collected; ask for the like/dislike feedback')
-    elif current_role == ROLE_FEEDBACK_LIKE:
+    elif current_state == STATE_FEEDBACK_LIKE:
         add_game_log(log_event='feedback_like', log_text=text)
         mongo_users.update_one(
-            user_filter, {'$set': {'current_role': ROLE_INACTIVE, 'counterparty': None, 'game_id': None}}
+            user_filter, {'$set': {'current_state': STATE_INACTIVE, 'counterparty': None, 'game_id': None, 'current_role': None}}
         )
         send_text_to_user(
             user_id,
@@ -448,7 +444,7 @@ def process_message(msg):
             reply_markup=render_markup([subscription_suggest, SUGGEST_START_GAME])
         )
         print('class: Like feedback succesfully collected; the round ended')
-    elif text == SUGGEST_NOT_START_GAME and current_role in GAME_ROLES:
+    elif text == SUGGEST_NOT_START_GAME and current_state == STATE_IN_GAME:
         send_text_to_user(
             user_id,
             '<i>Поздно! Вы уже в игре, ваша роль - {}.'
@@ -459,8 +455,7 @@ def process_message(msg):
             reply_markup=default_markup
         )
         print("class: tried not to start game, but already in a game")
-        return
-    elif text == SUGGEST_NOT_START_GAME and current_role == ROLE_INACTIVE:
+    elif text == SUGGEST_NOT_START_GAME and current_state == STATE_INACTIVE:
         send_text_to_user(
             user_id,
             '<i>Вы и так не начинаете игру. '
@@ -472,9 +467,8 @@ def process_message(msg):
             reply_markup=default_markup
         )
         print("class: tried not to start a game, but already inactive")
-        return
-    elif text == SUGGEST_NOT_START_GAME and current_role == ROLE_ACTIVE:
-        mongo_users.update_one(user_filter, {'$set': {'current_role': ROLE_INACTIVE}})
+    elif text == SUGGEST_NOT_START_GAME and current_state == STATE_ACTIVE:
+        mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_INACTIVE}})
         send_text_to_user(
             user_id,
             '<i>Хорошо, не будем начинать игру '
@@ -486,26 +480,14 @@ def process_message(msg):
             reply_markup=render_markup([subscription_suggest, SUGGEST_START_GAME])
         )
         print("class: successfully decided not to start a game")
-        return
-    elif current_role in GAME_ROLES:
-        mongo_game_logs.insert_one({
-            'event': 'text',
-            'sender': user_id,
-            'receiver': counterparty,
-            'text': text,
-            'sender_role': current_role,
-            'game_id': game_id,
-            'timestamp': datetime.now(),
-            'message_id': msg.message_id
-        })
+    elif current_state == STATE_IN_GAME:
+        add_game_log(log_text=text, log_event='text')
         send_text_to_user(counterparty, text)
         print("class: some random text within a game; sent to the counterparty")
-        return
     else:
         # todo: болталка, вопросы, и всё такое
         send_text_to_user(user_id, WELCOME_TEXT, reply_markup=default_markup)
         print("class: some random text outside a game")
-        return
 
 
 def main():
