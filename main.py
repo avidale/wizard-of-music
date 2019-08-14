@@ -85,6 +85,8 @@ SUGGEST_UNSUBSCRIBE = 'Не получать уведомления'
 SUGGEST_START_GAME = 'Начать игру'
 SUGGEST_NOT_START_GAME = 'Не начинать игру'
 SUGGEST_END_GAME = 'Завершить игру'
+SUGGEST_DO_BUY = 'Купить подписку!'
+SUGGEST_NOT_BUY = 'Завершить общение без сделки'
 
 INITIAL_SELLER_SUGGESTS = [
     "Привет! Хотите купить подписку?",
@@ -103,13 +105,11 @@ INITIAL_BUYER_SUGGESTS = [
 STATE_ACTIVE = 'active'
 STATE_INACTIVE = 'inactive'
 STATE_IN_GAME = 'in_game'
-STATE_FEEDBACK_DEAL = 'feedback_deal'
 STATE_FEEDBACK_TERMS = 'feedback_terms'
 STATE_FEEDBACK_WHY_NOT = 'feedback_why_not'
-STATE_FEEDBACK_LIKE = 'feedback_like'
 
 STATES_GAME = {STATE_IN_GAME}
-STATES_FEEDBACK = {STATE_FEEDBACK_DEAL, STATE_FEEDBACK_LIKE, STATE_FEEDBACK_TERMS, STATE_FEEDBACK_WHY_NOT}
+STATES_FEEDBACK = {STATE_FEEDBACK_TERMS, STATE_FEEDBACK_WHY_NOT}
 STATES_OUTSIDE = {STATE_ACTIVE, STATE_INACTIVE}
 
 ROLE_BUYER = 'buyer'
@@ -118,8 +118,8 @@ ROLE_SELLER = 'seller'
 ROLES_DICT = {ROLE_BUYER: 'потенциальный покупатель', ROLE_SELLER: 'продавец'}
 
 
-WELCOME_TEXT = '<i>Привет! Я бот для игры в продажу подписки на Яндекс.Музыку.' \
-               '\nВы будете выступать в роли покупателя или продавца (каждый раз это выбирается случайно).' \
+WELCOME_TEXT = '<i>Привет! Я бот для игры в покупку продажу подписки на Яндекс.Музыку.' \
+               '\nВы будете выступать в роли покупателя либо продавца (каждый раз это выбирается случайно).' \
                '\nНажмите "{}", если вы хотите начать игру прямо сейчас.' \
                '\nНажмите "{}", если вы хотите получать уведомления о желающих начать игру.' \
                '\nЧтобы проще было понимать, в игре ли вы в текущий момент, все сообщения от меня ' \
@@ -127,31 +127,49 @@ WELCOME_TEXT = '<i>Привет! Я бот для игры в продажу п�
                '\nА все сообщения от своего контрагента - прямым шрифтом, как теперь.' \
                '\n<i>Удачного торга!</i>'.format(SUGGEST_START_GAME, SUGGEST_SUBSCRIBE)
 
-INTRO_BUYER = '<i>Игра началась! Вы - потенциальный ПОКУПАТЕЛЬ подписки на Яндекс.Музыку. ' \
-              '\nВаша задача - выяснить, нужна ли вам подписка, и, если нужна, купить подешевле.' \
-              '\n\n Я буду иногда давать вам кнопки-подсказки, но лучше пишите от себя.' \
-              '\nУспешного торга!</i>'
+
+INTRO_BUYER = '<i>Вы - потенциальный ПОКУПАТЕЛЬ подписки на Яндекс.Музыку. ' \
+              '\nТочнее, вы изображаете клиента Яндекс.Музыки, ' \
+              'который прежде пользовался только бесплатной её версией. ' \
+              '\nВаша задача - разобраться, нужна ли вам подписка, и, если нужна, купить подешевле.' \
+              '\nВашим собеседником (продавцом подписки) будет робот, поэтому, пожалуйста, ' \
+              'относитесь с пониманием, если он будет вести себя странно.' \
+              '\nКогда условия, которые предлагает продавец, покажутся вам приемлемыми, ' \
+              'нажмите кнопку "{}", чтобы завершить игру сделкой.' \
+              '\nЕсли же вы не захотите или не сможете продолжать торг, ' \
+              'нажмите "{}", чтобы завершить игру без сделки.' \
+              '\n\n Я буду иногда давать вам кнопки-подсказки, но вы лучше пишите от себя.' \
+              '\nУспешного торга!</i>'.format(SUGGEST_DO_BUY, SUGGEST_NOT_BUY)
 
 
-INTRO_SELLER = '<i>Игра началась! Вы - ПРОДАВЕЦ подписки на Яндекс.Музыку. ' \
-               '\nВаша задача - убедить покупателя, что ему/ей очень нужна подписка, и продать её подороже.' \
+INTRO_SELLER = '<i>Вы - ПРОДАВЕЦ подписки Яндекс.Плюс. ' \
+               '\nТочнее, вы должны изображать робота (типа Алисы), который продаёт эту подписку.' \
+               '\nВаш собеседник - человек, который прежде пользовался только бесплатной версией Яндекс.Музыки.' \
+               '\nВаша задача - убедить собеседника, что ему/ей очень нужна подписка, и продать её подороже.' \
+               '\nИгра завершится, когда покупатель нажмёт одну из двух кнопок, "{}" или "{}". ' \
+               'Ваша цель - чтобы он нажал первую кнопку. Естественно, вам нельзя врать, угрожать покупателю и т.п.' \
+               '\nЕсли вы захотите прекратить торг, нажмите "{}". ' \
+               'Но это будет означать, что вы не смогли продать подписку.' \
                '\n\nКакие есть подписки в реальности (для справки): ' \
                '\n - Нативная на месяц с коротким триалом (1 мес) - 169 ₽ - https://plus.yandex.ru ' \
                '\n - Нативная на год - 1690 ₽  - https://music.yandex.ru/pay' \
                '\n - Семейная на месяц - 299 ₽ - https://music.yandex.ru/family-plus' \
                '\n - Нативная КиноПоиск + Амедиатека (на месяц) - 649 ₽ - https://www.kinopoisk.ru/mykp ' \
+               '\n\nЧтобы заинтересовать пользователя, вы можете рассказывать про разные фичи Музыки и Плюса в целом.' \
+               'Например, про возможность сохранять музыку офлайн, умные плейлисты, радио под настроение, и т.п.' \
                '\n\n Я буду иногда давать вам кнопки-подсказки, но лучше пишите от себя.' \
-               '\n Успешного торга!</i>'
+               '\n Успешного торга!</i>'.format(SUGGEST_DO_BUY, SUGGEST_NOT_BUY, SUGGEST_END_GAME)
 
+INTRO_START_PREFIX = '<i>Игра началась!</i>\n'
 ROLES_INTRO_DICT = {ROLE_BUYER: INTRO_BUYER, ROLE_SELLER: INTRO_SELLER}
 
 ROLES_INITIAL_SUGGESTS_DICT = {ROLE_BUYER: INITIAL_BUYER_SUGGESTS, ROLE_SELLER: INITIAL_SELLER_SUGGESTS}
 
 ALL_CONTENT_TYPES = ['document', 'text', 'photo', 'audio', 'video',  'location', 'contact', 'sticker']
 
-YES = ['Да', 'Удалось']
-NO = ['Нет', 'Не удалось']
-YES_NO_SUGGESTS = [YES[0], NO[0]]
+INACTIVE_UPDATE = {
+    '$set': {'current_state': STATE_INACTIVE, 'counterparty': None, 'game_id': None, 'current_role': None}
+}
 
 
 def get_reply_markup_for_id(user_id):
@@ -165,12 +183,15 @@ def get_suggests_for_user_object(user_object):
     else:
         subscription_suggest = SUGGEST_SUBSCRIBE
     if user_object.get('current_state') == STATE_INACTIVE:
-        game_suggest = SUGGEST_START_GAME
+        game_suggests = [SUGGEST_START_GAME]
     elif user_object.get('current_state') == STATE_ACTIVE:
-        game_suggest = SUGGEST_NOT_START_GAME
+        game_suggests = [SUGGEST_NOT_START_GAME]
     else:
-        game_suggest = SUGGEST_END_GAME
-    return [subscription_suggest, game_suggest]
+        if user_object.get('current_role') == ROLE_BUYER:
+            game_suggests = [SUGGEST_DO_BUY, SUGGEST_NOT_BUY]
+        else:
+            game_suggests = [SUGGEST_END_GAME]
+    return [subscription_suggest] + game_suggests
 
 
 def shuffled(some_list):
@@ -261,6 +282,7 @@ def process_message(msg):
     current_role = user_object.get('current_role')
     current_role_name = ROLES_DICT.get(current_role, 'undefined')
     counterparty = user_object.get('counterparty')
+    counterparty_filter = {'user_id': counterparty}
     game_id = user_object.get('game_id')
 
     def add_game_log(log_event, log_text, log_sender_role=None):
@@ -278,8 +300,10 @@ def process_message(msg):
             'message_id': msg.message_id
         })
 
-    subscription_suggest, game_suggest = get_suggests_for_user_object(user_object)
-    default_markup = render_markup([subscription_suggest, game_suggest])
+    suggested_suggests = get_suggests_for_user_object(user_object)
+    subscription_suggest = suggested_suggests[0]
+    game_suggests = suggested_suggests[1:]
+    default_markup = render_markup(suggested_suggests)
 
     if not text:
         send_text_to_user(
@@ -297,7 +321,7 @@ def process_message(msg):
             mongo_users.update_one(user_filter, {'$set': {'allow_notifications': True}})
             send_text_to_user(
                 user_id, '<i>Теперь вы подписаны на обновления о новых игроках!</i>',
-                reply_markup=render_markup([SUGGEST_UNSUBSCRIBE, game_suggest])
+                reply_markup=render_markup([SUGGEST_UNSUBSCRIBE] + game_suggests)
             )
             print("class: subscribe successfully")
     elif text == SUGGEST_UNSUBSCRIBE:
@@ -310,7 +334,7 @@ def process_message(msg):
             mongo_users.update_one(user_filter, {'$set': {'allow_notifications': False}})
             send_text_to_user(
                 user_id, '<i>Теперь вы отписаны от обновлений о новых игроках.</i>',
-                reply_markup=render_markup([SUGGEST_SUBSCRIBE, game_suggest])
+                reply_markup=render_markup([SUGGEST_SUBSCRIBE] + game_suggests)
             )
             print("class: unsubscribe successfully")
     elif text == SUGGEST_START_GAME and current_state in STATES_OUTSIDE:
@@ -335,12 +359,12 @@ def process_message(msg):
             )
             add_game_log(log_event='game_start', log_text=None, log_sender_role=new_role)
             send_text_to_user(
-                user_id, ROLES_INTRO_DICT[new_role],
+                user_id, INTRO_START_PREFIX + ROLES_INTRO_DICT[new_role],
                 reply_markup=render_markup(shuffled(ROLES_INITIAL_SUGGESTS_DICT[new_role]))
             )
             send_text_to_user(
                 counterparty,
-                ROLES_INTRO_DICT[new_counterparty_role],
+                INTRO_START_PREFIX + ROLES_INTRO_DICT[new_counterparty_role],
                 reply_markup=render_markup(shuffled(ROLES_INITIAL_SUGGESTS_DICT[new_counterparty_role]))
             )
             print("class: start new game successfully")
@@ -374,76 +398,77 @@ def process_message(msg):
             reply_markup=default_markup
         )
         print("class: tried to end a game, but already not in a game")
-    elif text == SUGGEST_END_GAME and current_state == STATE_IN_GAME:
-        add_game_log(log_event='game_end', log_text=None)
-        the_update = {'$set': {'current_state': STATE_FEEDBACK_DEAL}}
-        mongo_users.update_one(user_filter, the_update)
-        mongo_users.update_one({'user_id': counterparty}, the_update)
+    elif text == SUGGEST_END_GAME and current_state == STATE_IN_GAME and current_role == ROLE_SELLER:
+        add_game_log(log_event='game_end_by_seller', log_text=None)
+
+        mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_FEEDBACK_WHY_NOT}})
         send_text_to_user(
             user_id,
-            '<i>Окей, вы завершили игру. Спасибо вам за неё!\nВам удалось договориться о сделке?</i>',
-            reply_markup=render_markup(YES_NO_SUGGESTS)
+            '<i>Окей, вы завершили игру без сделки. Спасибо вам за эту игру!'
+            '\nПожалуйста, кратко расскажите в следующем сообщении, почему вы решили завершить игру?</i>',
+            reply_markup=[]
         )
+
+        mongo_users.update_one(counterparty_filter, INACTIVE_UPDATE)
         send_text_to_user(
             counterparty,
-            '<i>Ваш контрагент завершил игру. Спасибо вам за неё!\nВам удалось договориться о сделке?</i>',
-            reply_markup=render_markup(YES_NO_SUGGESTS)
+            '<i>Продавец решил завершить игру без сделки. '
+            '\nБольшое спасибо вам за игру! Приходите ещё \U0001F60A</i>'
         )
-        print("class: game ended successfully; ask whether it was successful")
-    elif current_state == STATE_FEEDBACK_DEAL:
-        if text_is_like(text, YES):
-            add_game_log(log_event='feedback_deal', log_text='YES')
-            mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_FEEDBACK_TERMS}})
-            send_text_to_user(
-                user_id,
-                '<i>Отлично! Пожалуйста, кратко опишите условия сделки '
-                '(на какой цене вы сошлись; какие особые условия, если они есть).'
-                '\nВажно: надо уложиться в одно сообщение.</i>',
-                reply_markup=render_markup([])
-            )
-            print('class: collected a positive deal feedback')
-        elif text_is_like(text, NO):
-            add_game_log(log_event='feedback_deal', log_text='NO')
-            mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_FEEDBACK_WHY_NOT}})
-            send_text_to_user(
-                user_id,
-                '<i>Как жаль! Пожалуйста, расскажите вкратце (в одном сообщении), почему сделка не состоялась?</i>',
-                # noqa
-                reply_markup=render_markup([])
-            )
-            print('class: collected a negative deal feedback')
-        else:
-            send_text_to_user(
-                user_id,
-                '<i>Простите, но я вас не понял. Договорились ли вы?\nПожалуйста, ответьте просто "Да" или "Нет".</i>',
-                reply_markup=render_markup(YES_NO_SUGGESTS)
-            )
-            print('class: could not collect the deal feedback; reask')
-    elif current_state in {STATE_FEEDBACK_TERMS, STATE_FEEDBACK_WHY_NOT}:
+        print("class: game ended by seller unsuccessfully; ask seller why")
+    elif text == SUGGEST_DO_BUY and current_state == STATE_IN_GAME and current_role == ROLE_BUYER:
+        add_game_log(log_event='game_end_by_buyer_did_buy', log_text=None)
+
+        mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_FEEDBACK_TERMS}})
+        send_text_to_user(
+            user_id,
+            '<i>Ура, вы согласились купить подписку!'
+            '\nПожалуйста, кратко опишите условия сделки '
+            '(на какой цене вы сошлись; какие особые условия, если они есть).'
+            '\nВажно: надо уложиться в одно сообщение.</i>',
+            reply_markup=render_markup([])
+        )
+
+        mongo_users.update_one(counterparty_filter, {'$set': {'current_state': STATE_FEEDBACK_TERMS}})
+        send_text_to_user(
+            counterparty,
+            '<i>Ура, ваш клиент согласился купить подписку!'
+            '\nПожалуйста, кратко опишите условия сделки '
+            '(на какой цене вы сошлись; какие особые условия, если они есть).'
+            '\nВажно: надо уложиться в одно сообщение.</i>',
+            reply_markup=render_markup([])
+        )
+        print("class: game ended by buyer successfully; ask buyer and seller about terms")
+    elif text == SUGGEST_NOT_BUY and current_state == STATE_IN_GAME and current_role == ROLE_BUYER:
+        add_game_log(log_event='game_end_by_buyer_did_not_buy', log_text=None)
+
+        mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_FEEDBACK_WHY_NOT}})
+        send_text_to_user(
+            user_id,
+            '<i>Окей, вы завершили игру без сделки. Спасибо вам за эту игру!'
+            '\nПожалуйста, кратко расскажите в следующем сообщении, почему вы решили завершить игру?</i>',
+            reply_markup=[]
+        )
+
+        mongo_users.update_one(counterparty_filter, INACTIVE_UPDATE)
+        send_text_to_user(
+            counterparty,
+            '<i>Покупатель решил завершить игру без сделки. '
+            '\nБольшое спасибо вам за игру и обратную связь! Приходите ещё \U0001F60A</i>'
+        )
+        print("class: game ended by buyer unsuccessfully; ask buyer why")
+    elif current_state == STATE_FEEDBACK_TERMS or current_state == STATE_FEEDBACK_WHY_NOT:
         if current_state == STATE_FEEDBACK_TERMS:
             add_game_log(log_event='feedback_terms', log_text=text)
         elif current_state == STATE_FEEDBACK_WHY_NOT:
             add_game_log(log_event='feedback_why_not', log_text=text)
-        mongo_users.update_one(user_filter, {'$set': {'current_state': STATE_FEEDBACK_LIKE}})
-        send_text_to_user(
-            user_id,
-            '<i>Понятно. Последний вопрос: насколько вам понравился этот разговор, '
-            'по шкале от 1 (было ужасно) до 5 (просто огонь)?</i>',
-            # noqa
-            reply_markup=render_markup(['1', '2', '3', '4', '5'], max_columns=5)
-        )
-        print('class: terms/whynot feedback succesfully collected; ask for the like/dislike feedback')
-    elif current_state == STATE_FEEDBACK_LIKE:
-        add_game_log(log_event='feedback_like', log_text=text)
-        mongo_users.update_one(
-            user_filter, {'$set': {'current_state': STATE_INACTIVE, 'counterparty': None, 'game_id': None, 'current_role': None}}
-        )
+        mongo_users.update_one(user_filter, INACTIVE_UPDATE)
         send_text_to_user(
             user_id,
             '<i>Ага, понятно.\nБольшое спасибо вам за игру и обратную связь! Приходите ещё \U0001F60A</i>',
             reply_markup=render_markup([subscription_suggest, SUGGEST_START_GAME])
         )
-        print('class: Like feedback succesfully collected; the round ended')
+        print('class: terms feedback succesfully collected; game finally ended')
     elif text == SUGGEST_NOT_START_GAME and current_state == STATE_IN_GAME:
         send_text_to_user(
             user_id,
@@ -480,6 +505,16 @@ def process_message(msg):
             reply_markup=render_markup([subscription_suggest, SUGGEST_START_GAME])
         )
         print("class: successfully decided not to start a game")
+    elif text == '/help':
+        if current_role == ROLE_BUYER:
+            send_text_to_user(user_id, INTRO_BUYER)
+            print('class: help to buyer')
+        elif current_role == ROLE_SELLER:
+            send_text_to_user(user_id, INTRO_SELLER)
+            print('class: help to seller')
+        else:
+            send_text_to_user(user_id, WELCOME_TEXT)
+            print('class: help outside game')
     elif current_state == STATE_IN_GAME:
         add_game_log(log_text=text, log_event='text')
         send_text_to_user(counterparty, text)
